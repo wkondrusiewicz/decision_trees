@@ -1,12 +1,15 @@
 
 
-class Node:
-    def __init__(self, gini, num_samples, num_samples_per_class, predicted_class):
-        self.gini = gini
-        self.num_samples = num_samples
-        self.num_samples_per_class = num_samples_per_class
-        self.predicted_class = predicted_class
-        self.feature_index = 0
-        self.threshold = 0
-        self.left = None
-        self.right = None
+class TreeNode:
+    def __init__(self, score):
+        self.score = score
+        self.feature_index = None
+        self.threshold = None
+        self.left_node = None
+        self.right_node = None
+
+    def __str__(self):
+        return f'Feature {self.feature_index} with score of {self.score} and split of {self.threshold}'
+
+    def __repr__(self):
+        return self.__str__()
