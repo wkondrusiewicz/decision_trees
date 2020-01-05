@@ -1,5 +1,7 @@
-import numpy as np
+import os
 
+import numpy as np
+import pydot
 
 from decision_trees.node import TreeNode
 from decision_trees.metrics import GiniImportance
@@ -10,7 +12,6 @@ class BasicTree:
         self.__max_depth = max_depth
         self.scorer = scorer()  # create an instance of scorer class
         self.tree = None
-        self.tree_structure = {}
 
     @property
     def max_depth(self):
@@ -68,10 +69,9 @@ class DecisionTreeClassifier(BasicTree):
                 best_thresh = best_thresh_for_feature
         return best_score, best_index, best_thresh
 
-    def _grow_tree(self, X, y, depth=0):
+    def _grow_tree(self, X, y, depth=0, tree_structure={}):
         current_score = self.scorer.get_score(y)
         tree_node = TreeNode(score=current_score)
-        # self.tree_structure['']
         if depth < self.max_depth:
             best_score, best_index, best_thresh = self._get_best_split_for_dataset(X, y)
             if best_index is not None and best_thresh is not None:
@@ -83,9 +83,40 @@ class DecisionTreeClassifier(BasicTree):
                 y_right = y[right_mask]
                 tree_node.feature_index=best_index
                 tree_node.threshold=best_thresh
-                tree_node.left_node = self._grow_tree(X_left, y_left, depth+1)
-                tree_node.right_node = self._grow_tree(X_right, y_right, depth+1)
+                root_key = f'feature_{best_index}, thresh {best_thresh}'
+                print(root_key)
+                tree_structure[root_key]={}
+                tree_node.tree_structure=tree_structure
+                tree_node.left_node = self._grow_tree(X_left, y_left, depth+1, tree_structure[root_key])
+                tree_node.right_node = self._grow_tree(X_right, y_right, depth+1, tree_structure[root_key])
+        else:
+            print('DUPA')
+            tree_structure[f'TERMINAL NODE WITH SCORE {current_score}']={}
+            tree_node.tree_structure = tree_structure
         return tree_node
 
     def fit(self, X, y):
         self.tree = self._grow_tree(X, y)
+
+    def draw_tree(self, out_dir):
+        assert self.tree is not None, 'Please first fit a tree to the data'
+        def draw(parent_name, child_name):
+            edge = pydot.Edge(parent_name, child_name)
+            graph.add_edge(edge)
+
+        def visit(node, parent=None):
+            for k,v in node.items():
+                if isinstance(v, dict):
+                    # We start with the root node whose parent is None
+                    # we don't want to graph the None node
+                    if parent:
+                        draw(parent, k)
+                    visit(v, k)
+                else:
+                    draw(parent, k)
+                    # drawing the label using a distinct name
+                    draw(k, k+'_'+v)
+
+        graph = pydot.Dot(graph_type='graph')
+        visit(self.tree.tree_structure)
+        graph.write_png(os.path.join(out_dir,'decision_tree.png'))
