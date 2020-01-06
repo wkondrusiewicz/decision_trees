@@ -113,6 +113,20 @@ class DecisionTreeClassifier(BasicTree):
         self.number_of_classes = len(set(y))
         self.tree = self._grow_tree(X, y)
 
+    def _get_single_prediction(self, X_single):
+        assert self.tree is not None, 'Please first fit a tree to the data'
+
+        node = self.tree
+        while node.left_node:
+            if X_single[node.feature_index] < node.threshold:
+                node = node.left_node
+            else:
+                node = node.right_node
+        return node.predicted_class
+
+    def predict(self, X):
+        return [self._get_single_prediction(x) for x in X]
+
     def draw_tree(self, out_dir):
         assert self.tree is not None, 'Please first fit a tree to the data'
 
