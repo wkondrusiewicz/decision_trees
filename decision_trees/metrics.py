@@ -4,6 +4,7 @@ import numpy as np
 
 
 class BaseScorer:
+
     def __init__(self):
         pass
 

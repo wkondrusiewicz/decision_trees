@@ -69,11 +69,22 @@ class DecisionTreeClassifier(BasicTree):
                 best_thresh = best_thresh_for_feature
         return best_score, best_index, best_thresh
 
+    def get_output_format(self, score, samples_per_class, predicted_class, index=None, threshold=None):
+        root_key = f'{type(self.scorer).__name__} = {score:.2f}\nsamples = {np.sum(samples_per_class)}\nclass division = {samples_per_class}\npredicted class = {predicted_class}'
+        if threshold is not None and index is not None:
+            root_key = f'feature_{index} < {threshold:.2f}\n' + root_key
+        return root_key
+
     def _grow_tree(self, X, y, depth=0, tree_structure={}):
         current_score = self.scorer.get_score(y)
-        tree_node = TreeNode(score=current_score)
+        samples_per_class = [np.sum(y == i)
+                             for i in range(1, self.number_of_classes + 1)]
+        predicted_class = np.argmax(samples_per_class) + 1
+        tree_node = TreeNode(
+            score=current_score, samples_per_class=samples_per_class, predicted_class=predicted_class)
         if depth < self.max_depth:
-            best_score, best_index, best_thresh = self._get_best_split_for_dataset(X, y)
+            best_score, best_index, best_thresh = self._get_best_split_for_dataset(
+                X, y)
             if best_index is not None and best_thresh is not None:
                 left_mask = X[:, best_index] < best_thresh
                 right_mask = X[:, best_index] >= best_thresh
@@ -81,31 +92,36 @@ class DecisionTreeClassifier(BasicTree):
                 X_right = X[right_mask]
                 y_left = y[left_mask]
                 y_right = y[right_mask]
-                tree_node.feature_index=best_index
-                tree_node.threshold=best_thresh
-                root_key = f'feature_{best_index}, thresh {best_thresh}'
-                print(root_key)
-                tree_structure[root_key]={}
-                tree_node.tree_structure=tree_structure
-                tree_node.left_node = self._grow_tree(X_left, y_left, depth+1, tree_structure[root_key])
-                tree_node.right_node = self._grow_tree(X_right, y_right, depth+1, tree_structure[root_key])
+                tree_node.feature_index = best_index
+                tree_node.threshold = best_thresh
+                root_key = self.get_output_format(
+                    best_score, samples_per_class, predicted_class, best_index, best_thresh)
+                tree_structure[root_key] = {}
+                tree_node.tree_structure = tree_structure
+                tree_node.left_node = self._grow_tree(
+                    X_left, y_left, depth + 1, tree_structure[root_key])
+                tree_node.right_node = self._grow_tree(
+                    X_right, y_right, depth + 1, tree_structure[root_key])
         else:
-            print('DUPA')
-            tree_structure[f'TERMINAL NODE WITH SCORE {current_score}']={}
+            root_key = self.get_output_format(
+                current_score, samples_per_class, predicted_class)
+            tree_structure[root_key] = {}
             tree_node.tree_structure = tree_structure
         return tree_node
 
     def fit(self, X, y):
+        self.number_of_classes = len(set(y))
         self.tree = self._grow_tree(X, y)
 
     def draw_tree(self, out_dir):
         assert self.tree is not None, 'Please first fit a tree to the data'
+
         def draw(parent_name, child_name):
             edge = pydot.Edge(parent_name, child_name)
             graph.add_edge(edge)
 
         def visit(node, parent=None):
-            for k,v in node.items():
+            for k, v in node.items():
                 if isinstance(v, dict):
                     # We start with the root node whose parent is None
                     # we don't want to graph the None node
@@ -115,8 +131,8 @@ class DecisionTreeClassifier(BasicTree):
                 else:
                     draw(parent, k)
                     # drawing the label using a distinct name
-                    draw(k, k+'_'+v)
+                    draw(k, k + '_' + v)
 
         graph = pydot.Dot(graph_type='graph')
         visit(self.tree.tree_structure)
-        graph.write_png(os.path.join(out_dir,'decision_tree.png'))
+        graph.write_png(os.path.join(out_dir, 'decision_tree.png'))
