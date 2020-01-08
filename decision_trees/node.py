@@ -1,10 +1,10 @@
 
 
 class TreeNode:
-    def __init__(self, score, samples_per_class, predicted_class):
+    def __init__(self, score, samples_per_class, prediction):
         self.score = score
         self.samples_per_class = samples_per_class
-        self.predicted_class = predicted_class
+        self.prediction = prediction
         self.feature_index = None
         self.threshold = None
         self.left_node = None
