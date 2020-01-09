@@ -32,6 +32,8 @@ class BasicTreePredictor:
         current_fueature_score = self.scorer.get_score(y_slice)
         best_score = current_fueature_score
         best_threshold = None
+        if len(y_slice) <= 1:  # >= 2 elements are needed to split a Node
+            return None, None
         for thresh in thresholds:
             score = self.scorer.get_score_after_split(
                 X_slice, y_slice, thresh)
@@ -51,9 +53,15 @@ class BasicTreePredictor:
                 best_score = best_score_for_feature
                 best_index = i
                 best_thresh = best_thresh_for_feature
+            elif best_thresh_for_feature is None:
+                best_index = None
+                best_thresh = None
         return best_score, best_index, best_thresh
 
     def _grow_tree(self, X, y, depth=0, tree_structure={}):
+        if depth == 0 and len(tree_structure) == 0:
+            tree_structure = {}
+
         current_score = self.scorer.get_score(y)
         if self.mode == 'classification':
             samples_per_class = [np.sum(y == i)
@@ -121,8 +129,8 @@ class BasicTreePredictor:
     def draw_tree(self, out_dir):
         assert self.tree is not None, 'Please first fit a tree to the data'
 
-
         graph = pydot.Dot(graph_type='graph')
+
         def draw(parent_name, child_name):
             edge = pydot.Edge(parent_name, child_name)
             graph.add_edge(edge)
@@ -142,7 +150,8 @@ class BasicTreePredictor:
 
         visit(self.tree.tree_structure)
         os.makedirs(out_dir, exist_ok=True)
-        graph.write_png(os.path.join(out_dir, 'decision_tree.png'))
+        graph.write_png(os.path.join(
+            out_dir, f'decision_tree_{self.mode}.png'))
 
 
 class DecisionTreeClassifier(BasicTreePredictor):
