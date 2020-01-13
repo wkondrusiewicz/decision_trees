@@ -89,7 +89,7 @@ class MeanSquaredError(BaseScorer):
     @property
     def optimization_types(self):
         return ['regression']
-        
+
     @staticmethod
     def scoring_condition(previous_value, new_value):
         return previous_value < new_value
